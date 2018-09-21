@@ -1,39 +1,57 @@
-import socket, sys # this is a modified code found by the interwebz. mostly of this isn't written by me, and that's why it didn't work at first :P
+#copyright 2017-18 by aleok
 
-irc = socket.socket()
-  
-def __init__(self):  
-    self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
- 
-def send(chan, msg):
-    irc.send(bytes("PRIVMSG " + chan + " :" + msg + "\r\n", "UTF-8"))
- 
-def connect(server, channel, botnick):
-    #defines the socket
-    print("connecting to:"+server)
-    irc.connect((server, 6667))                                                         #connects to the server
-    irc.send(bytes("USER " + botnick + " " + botnick +" " + botnick + " :This is a fun bot!\r\n", "UTF-8")) #user authentication
-    irc.send(bytes("NICK " + botnick + "\r\n", "UTF-8"))               
-    irc.send(bytes("JOIN " + channel + "\r\n", "UTF-8"))        #join the chan
- 
-def get_text():
-    text=irc.recv(2040)  #receive the text
- 
-    return text
-
-channel = "##TommyTreasureMinetest"
+############
+# SETTINGS #
+############
+channel = "#channel"
 server = "irc.freenode.net"
-nickname = "alertbot3000"
+nickname = "nick"
+passwordFileName = "pass.txt"
 
-connect(server, channel, nickname)
- 
+############
+### CODE ###
+############
+import socket, sys, time
+
+# Don't use unless you know what you're doing!
+debug = False
+
+pFile = open(passwordFileName, "r")
+password = pFile.read()
+pFile.close()
+
+#Create socket
+s = socket.socket()
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+def send(chan, msg):
+    s.send(bytes("PRIVMSG " + chan + " :" + msg + "\r\n", "UTF-8"))
+    
+def connect(srvr, ch, botnick, passw):
+    print("Connecting to: "+server)
+    s.connect((srvr, 6667)) #Connect to the server
+    s.send(bytes("USER " + botnick + " " + botnick +" " + botnick + " :This is a fun bot\r\n", "UTF-8")) #User authentication
+    s.send(bytes("NICK " + botnick + "\r\n", "UTF-8"))
+    if passw:
+        s.send(bytes('PRIVMSG NickServ :identify {}\r\n'.format(passw), 'UTF-8')) #Use password
+    s.send(bytes("JOIN " + ch + "\r\n", "UTF-8")) #Join the channel specified
+
+
+connect(server, channel, nickname, password)
 while 1:
-    text = get_text()
-    print(text)
-    if "JOIN" in str(text):
-        if sys.argv == []:
-            send(channel, "Server shutting down in 10 minutes for Backup.")
+    msg = s.recv(2040)
+    if debug:
+        print(msg)
+    if "JOIN" in str(msg):
+        print("Joined channel.")
+    if "You are now identified" in str(msg):
+        print("Identified.")
+        if len(sys.argv) == 1: #If no arguments given...
+            print("Using default message.")
+            send(channel, "Server shutting down in 10 minutes for backup.")
         else:
+            print("Using sys.argv message.")
             send(channel, " ".join(sys.argv[1:]))
-        irc.close()
+        s.send(bytes("QUIT\r\n", "UTF-8")) #Quit
         break
